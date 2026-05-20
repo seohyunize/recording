@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Studio · 실시간 회의록</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: radial-gradient(ellipse at top, #1a1a2e 0%, #0f0f1a 50%, #050508 100%);
+    color: #e8e8f0;
+    min-height: 100vh;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 40px; }
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff4d6d 0%, #c1121f 50%, #780000 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    color: #6b6b80;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .studio {
+    background: rgba(20, 20, 35, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    margin-bottom: 24px;
+  }
+  .visualizer-wrap {
+    height: 100px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 16px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+  }
+  #visualizer { width: 100%; height: 100%; display: block; }
+  .timer {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 200;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 3px;
+    margin-bottom: 24px;
+    color: #fff;
+  }
+  .timer.recording {
+    color: #ff4d6d;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { text-shadow: 0 0 30px rgba(255, 77, 109, 0.4); }
+    50% { text-shadow: 0 0 50px rgba(255, 77, 109, 0.8); }
+  }
+  .controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-record {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff4d6d 0%, #c1121f 100%);
+    box-shadow: 0 10px 40px rgba(255, 77, 109, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .btn-record:hover { transform: scale(1.05); }
+  .btn-record:active { transform: scale(0.98); }
+  .btn-record.recording { animation: recordPulse 1.5s ease-in-out infinite; }
+  @keyframes recordPulse {
+    0%, 100% { box-shadow: 0 10px 40px rgba(255, 77, 109, 0.4), 0 0 0 0 rgba(255, 77, 109, 0.7); }
+    50% { box-shadow: 0 10px 40px rgba(255, 77, 109, 0.4), 0 0 0 20px rgba(255, 77, 109, 0); }
+  }
+  .record-icon {
+    width: 28px;
+    height: 28px;
+    background: #fff;
+    border-radius: 50%;
+    transition: all 0.3s;
+  }
+  .recording .record-icon { width: 24px; height: 24px; border-radius: 4px; }
+  .btn-secondary {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e8e8f0;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+  }
+  .btn-secondary:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-secondary svg { width: 20px; height: 20px; }
+  .status {
+    text-align: center;
+    color: #6b6b80;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    min-height: 20px;
+  }
+  .error {
+    background: rgba(255, 77, 109, 0.1);
+    border: 1px solid rgba(255, 77, 109, 0.3);
+    color: #ff8fa3;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 0.9rem;
+    display: none;
+  }
+  .error.show { display: block; }
+  .warning {
+    background: rgba(255, 193, 77, 0.08);
+    border: 1px solid rgba(255, 193, 77, 0.25);
+    color: #ffd089;
+    padding: 10px 16px;
+    border-radius: 10px;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 0.85rem;
+    display: none;
+  }
+  .warning.show { display: block; }
+
+  /* 회의록 섹션 */
+  .transcript-section {
+    background: rgba(20, 20, 35, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 30px;
+    margin-bottom: 24px;
+  }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .section-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .live-badge {
+    background: rgba(255, 77, 109, 0.15);
+    color: #ff4d6d;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    display: none;
+    align-items: center;
+    gap: 6px;
+  }
+  .live-badge.show { display: inline-flex; }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    background: #ff4d6d;
+    border-radius: 50%;
+    animation: blink 1s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .section-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .action-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e8e8f0;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+  }
+  .action-btn:hover { background: rgba(255, 255, 255, 0.1); }
+  .action-btn svg { width: 14px; height: 14px; }
+  .action-btn.danger:hover {
+    background: rgba(255, 77, 109, 0.15);
+    color: #ff4d6d;
+    border-color: rgba(255, 77, 109, 0.3);
+  }
+  .transcript-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    padding: 20px;
+    min-height: 240px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.8;
+    color: #e8e8f0;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .transcript-box:focus {
+    border-color: rgba(255, 77, 109, 0.3);
+  }
+  .transcript-box[contenteditable="true"]:empty::before {
+    content: attr(data-placeholder);
+    color: #4a4a5e;
+    pointer-events: none;
+  }
+  .interim {
+    color: #8888a0;
+    font-style: italic;
+    opacity: 0.7;
+  }
+  .timestamp {
+    color: #ff4d6d;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .transcript-segment {
+    display: block;
+    margin-bottom: 8px;
+    padding: 2px 0;
+  }
+
+  /* 녹음 목록 */
+  .recordings {
+    background: rgba(20, 20, 35, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 30px;
+  }
+  .recordings-count {
+    background: rgba(255, 77, 109, 0.15);
+    color: #ff4d6d;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .recording-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s;
+  }
+  .recording-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 77, 109, 0.2);
+  }
+  .item-play {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff4d6d 0%, #c1121f 100%);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .item-play:hover { transform: scale(1.1); }
+  .item-play svg { width: 14px; height: 14px; }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item-meta { font-size: 0.8rem; color: #6b6b80; }
+  .item-actions { display: flex; gap: 8px; }
+  .item-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e8e8f0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .item-btn:hover { background: rgba(255, 255, 255, 0.1); }
+  .item-btn.delete:hover {
+    background: rgba(255, 77, 109, 0.15);
+    color: #ff4d6d;
+    border-color: rgba(255, 77, 109, 0.3);
+  }
+  .item-btn svg { width: 14px; height: 14px; }
+  .empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: #4a4a5e;
+    font-size: 0.9rem;
+  }
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(20, 20, 35, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 77, 109, 0.3);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 1000;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  /* 스크롤바 */
+  .transcript-box::-webkit-scrollbar { width: 8px; }
+  .transcript-box::-webkit-scrollbar-track { background: transparent; }
+  .transcript-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+  @media (max-width: 600px) {
+    .studio, .transcript-section, .recordings { padding: 24px 18px; }
+    h1 { font-size: 1.8rem; }
+    .timer { font-size: 2.3rem; }
+    .btn-record { width: 75px; height: 75px; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Voice Studio</h1>
+      <div class="subtitle">실시간 회의록 · STT</div>
+    </header>
+
+    <!-- 녹음 컨트롤 -->
+    <div class="studio">
+      <div class="visualizer-wrap">
+        <canvas id="visualizer"></canvas>
+      </div>
+
+      <div class="timer" id="timer">00:00</div>
+
+      <div class="controls">
+        <button class="btn btn-secondary" id="cancelBtn" disabled title="취소">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="btn btn-record" id="recordBtn" title="녹음">
+          <div class="record-icon"></div>
+        </button>
+        <button class="btn btn-secondary" id="pauseBtn" disabled title="일시정지">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="4" width="4" height="16"></rect>
+            <rect x="14" y="4" width="4" height="16"></rect>
+          </svg>
+        </button>
+      </div>
+
+      <div class="status" id="status">녹음 버튼을 눌러 시작하세요</div>
+      <div class="error" id="error"></div>
+      <div class="warning" id="warning"></div>
+    </div>
+
+    <!-- 실시간 회의록 -->
+    <div class="transcript-section">
+      <div class="section-header">
+        <div class="section-title">
+          📝 회의록
+          <span class="live-badge" id="liveBadge"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="section-actions">
+          <button class="action-btn" id="copyBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            복사
+          </button>
+          <button class="action-btn" id="downloadTxtBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            다운로드
+          </button>
+          <button class="action-btn danger" id="clearBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
+            </svg>
+            초기화
+          </button>
+        </div>
+      </div>
+      <div class="transcript-box" id="transcript" contenteditable="true" data-placeholder="녹음을 시작하면 여기에 실시간으로 회의록이 작성됩니다. 직접 수정도 가능해요."></div>
+    </div>
+
+    <!-- 녹음 목록 -->
+    <div class="recordings">
+      <div class="section-header">
+        <div class="section-title">🎵 녹음 목록</div>
+        <div class="recordings-count" id="count">0</div>
+      </div>
+      <div id="recordingsList">
+        <div class="empty">아직 녹음된 파일이 없습니다</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const recordBtn = document.getElementById('recordBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const timerEl = document.getElementById('timer');
+  const statusEl = document.getElementById('status');
+  const errorEl = document.getElementById('error');
+  const warningEl = document.getElementById('warning');
+  const listEl = document.getElementById('recordingsList');
+  const countEl = document.getElementById('count');
+  const canvas = document.getElementById('visualizer');
+  const ctx = canvas.getContext('2d');
+  const transcriptEl = document.getElementById('transcript');
+  const liveBadge = document.getElementById('liveBadge');
+  const copyBtn = document.getElementById('copyBtn');
+  const downloadTxtBtn = document.getElementById('downloadTxtBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const toastEl = document.getElementById('toast');
+
+  let mediaRecorder = null;
+  let stream = null;
+  let audioContext = null;
+  let analyser = null;
+  let chunks = [];
+  let startTime = 0;
+  let elapsedBeforePause = 0;
+  let timerInterval = null;
+  let animationId = null;
+  let isRecording = false;
+  let isPaused = false;
+  let recordings = [];
+  let currentlyPlaying = null;
+  let cancelRequested = false;
+
+  // STT 관련
+  let recognition = null;
+  let sttSupported = false;
+  let segments = []; // { time: 'mm:ss', text: '...' }
+  let interimText = '';
+  let recognitionRestartTimer = null;
+
+  // Web Speech API 확인
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    sttSupported = true;
+  } else {
+    showWarning('이 브라우저는 실시간 음성 인식을 지원하지 않습니다. Chrome 또는 Edge 브라우저를 사용해 주세요. 녹음은 정상 작동합니다.');
+  }
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  drawIdle();
+
+  function drawIdle() {
+    const w = canvas.width / window.devicePixelRatio;
+    const h = canvas.height / window.devicePixelRatio;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(255, 77, 109, 0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+  }
+
+  function drawVisualizer() {
+    if (!analyser) return;
+    animationId = requestAnimationFrame(drawVisualizer);
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+    const w = canvas.width / window.devicePixelRatio;
+    const h = canvas.height / window.devicePixelRatio;
+    ctx.clearRect(0, 0, w, h);
+    const barCount = 64;
+    const barWidth = w / barCount;
+    const step = Math.floor(bufferLength / barCount);
+    for (let i = 0; i < barCount; i++) {
+      const value = dataArray[i * step];
+      const barHeight = (value / 255) * h * 0.9;
+      const x = i * barWidth;
+      const y = (h - barHeight) / 2;
+      const grad = ctx.createLinearGradient(0, y, 0, y + barHeight);
+      grad.addColorStop(0, '#ff4d6d');
+      grad.addColorStop(1, '#c1121f');
+      ctx.fillStyle = grad;
+      const bw = Math.max(2, barWidth - 2);
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(x + 1, y, bw, barHeight, bw / 2);
+      } else {
+        ctx.rect(x + 1, y, bw, barHeight);
+      }
+      ctx.fill();
+    }
+  }
+
+  function formatTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+    const s = (totalSec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function updateTimer() {
+    if (isPaused) return;
+    const elapsed = elapsedBeforePause + (Date.now() - startTime);
+    timerEl.textContent = formatTime(elapsed);
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('show');
+    setTimeout(() => errorEl.classList.remove('show'), 5000);
+  }
+
+  function showWarning(msg) {
+    warningEl.textContent = msg;
+    warningEl.classList.add('show');
+  }
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2000);
+  }
+
+  // ===== STT (실시간 음성 인식) =====
+  function startRecognition() {
+    if (!sttSupported) return;
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0].transcript;
+        if (result.isFinal) {
+          const elapsed = elapsedBeforePause + (isPaused ? 0 : (Date.now() - startTime));
+          segments.push({
+            time: formatTime(elapsed),
+            text: transcript.trim()
+          });
+        } else {
+          interim += transcript;
+        }
+      }
+      interimText = interim;
+      renderTranscript();
+    };
+
+    recognition.onerror = (event) => {
+      console.error('STT error:', event.error);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        showError('음성 인식 권한이 거부되었습니다.');
+      } else if (event.error === 'no-speech') {
+        // 무시 (자주 발생)
+      } else if (event.error === 'network') {
+        showWarning('네트워크 오류로 음성 인식이 일시 중단되었습니다.');
+      }
+    };
+
+    recognition.onend = () => {
+      // 녹음 중이면 자동 재시작 (Chrome은 일정 시간 후 자동 종료됨)
+      if (isRecording && !isPaused) {
+        recognitionRestartTimer = setTimeout(() => {
+          if (isRecording && !isPaused) {
+            try { recognition.start(); } catch(e) {}
+          }
+        }, 100);
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error('Recognition start failed:', e);
+    }
+  }
+
+  function stopRecognition() {
+    if (recognitionRestartTimer) {
+      clearTimeout(recognitionRestartTimer);
+      recognitionRestartTimer = null;
+    }
+    if (recognition) {
+      recognition.onend = null;
+      try { recognition.stop(); } catch(e) {}
+      recognition = null;
+    }
+    interimText = '';
+    renderTranscript();
+  }
+
+  function pauseRecognition() {
+    if (recognitionRestartTimer) {
+      clearTimeout(recognitionRestartTimer);
+      recognitionRestartTimer = null;
+    }
+    if (recognition) {
+      recognition.onend = null;
+      try { recognition.stop(); } catch(e) {}
+      recognition = null;
+    }
+    interimText = '';
+    renderTranscript();
+  }
+
+  function renderTranscript() {
+    let html = '';
+    segments.forEach(seg => {
+      html += `<span class="transcript-segment"><span class="timestamp">[${seg.time}]</span>${escapeHtml(seg.text)}</span>`;
+    });
+    if (interimText) {
+      html += `<span class="interim">${escapeHtml(interimText)}</span>`;
+    }
+    transcriptEl.innerHTML = html;
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ===== 녹음 =====
+  async function startRecording() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      chunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        if (chunks.length > 0 && !cancelRequested) {
+          const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+          const elapsed = elapsedBeforePause + (Date.now() - startTime);
+          addRecording(blob, elapsed);
+        }
+        cleanup();
+      };
+
+      mediaRecorder.start(100);
+      isRecording = true;
+      isPaused = false;
+      startTime = Date.now();
+      elapsedBeforePause = 0;
+      cancelRequested = false;
+
+      // 새 녹음 시작 시 회의록 세그먼트 초기화 여부 확인은 하지 않음 (이어쓰기)
+      // 단, 현재 세션의 시간 기준은 0부터 시작
+      segments = [];
+      interimText = '';
+      renderTranscript();
+
+      recordBtn.classList.add('recording');
+      timerEl.classList.add('recording');
+      pauseBtn.disabled = false;
+      cancelBtn.disabled = false;
+      liveBadge.classList.add('show');
+      statusEl.textContent = '● 녹음 + 회의록 작성 중...';
+
+      timerInterval = setInterval(updateTimer, 100);
+      drawVisualizer();
+
+      // STT 시작
+      startRecognition();
+    } catch (err) {
+      console.error(err);
+      if (err.name === 'NotAllowedError') {
+        showError('마이크 권한이 필요합니다. 브라우저 설정에서 허용해 주세요.');
+      } else {
+        showError('녹음을 시작할 수 없습니다: ' + err.message);
+      }
+    }
+  }
+
+  function stopRecording() {
+    stopRecognition();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+  }
+
+  function cancelRecording() {
+    cancelRequested = true;
+    stopRecognition();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    statusEl.textContent = '취소되었습니다';
+  }
+
+  function togglePause() {
+    if (!mediaRecorder) return;
+    if (mediaRecorder.state === 'recording') {
+      mediaRecorder.pause();
+      isPaused = true;
+      elapsedBeforePause += Date.now() - startTime;
+      statusEl.textContent = '⏸ 일시정지';
+      timerEl.classList.remove('recording');
+      cancelAnimationFrame(animationId);
+      pauseRecognition();
+      liveBadge.classList.remove('show');
+    } else if (mediaRecorder.state === 'paused') {
+      mediaRecorder.resume();
+      isPaused = false;
+      startTime = Date.now();
+      statusEl.textContent = '● 녹음 + 회의록 작성 중...';
+      timerEl.classList.add('recording');
+      drawVisualizer();
+      startRecognition();
+      liveBadge.classList.add('show');
+    }
+  }
+
+  function cleanup() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+    analyser = null;
+    isRecording = false;
+    isPaused = false;
+    recordBtn.classList.remove('recording');
+    timerEl.classList.remove('recording');
+    timerEl.textContent = '00:00';
+    pauseBtn.disabled = true;
+    cancelBtn.disabled = true;
+    liveBadge.classList.remove('show');
+    if (!cancelRequested) statusEl.textContent = '녹음이 완료되었습니다 · 회의록을 편집/다운로드할 수 있습니다';
+    drawIdle();
+  }
+
+  function addRecording(blob, duration) {
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const id = Date.now();
+    const name = `녹음_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;
+    // 현재 회의록 텍스트도 함께 저장
+    const transcriptText = getTranscriptText();
+    recordings.unshift({ id, blob, url, name, duration, size: blob.size, date: now, transcript: transcriptText });
+    renderList();
+  }
+
+  function renderList() {
+    countEl.textContent = recordings.length;
+    if (recordings.length === 0) {
+      listEl.innerHTML = '<div class="empty">아직 녹음된 파일이 없습니다</div>';
+      return;
+    }
+    listEl.innerHTML = recordings.map(r => `
+      <div class="recording-item" data-id="${r.id}">
+        <button class="item-play" data-action="play" data-id="${r.id}">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>
+        </button>
+        <div class="item-info">
+          <div class="item-name">${r.name}</div>
+          <div class="item-meta">${formatTime(r.duration)} · ${(r.size / 1024).toFixed(1)} KB${r.transcript ? ' · 📝 회의록 포함' : ''}</div>
+        </div>
+        <div class="item-actions">
+          ${r.transcript ? `<button class="item-btn" data-action="loadTranscript" data-id="${r.id}" title="회의록 불러오기">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </button>` : ''}
+          <button class="item-btn" data-action="download" data-id="${r.id}" title="오디오 다운로드">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <button class="item-btn delete" data-action="delete" data-id="${r.id}" title="삭제">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  listEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.id);
+    const rec = recordings.find(r => r.id === id);
+    if (!rec) return;
+
+    if (btn.dataset.action === 'play') {
+      if (currentlyPlaying && currentlyPlaying.audio) {
+        currentlyPlaying.audio.pause();
+        currentlyPlaying.btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>';
+      }
+      if (currentlyPlaying && currentlyPlaying.id === id) {
+        currentlyPlaying = null;
+        return;
+      }
+      const audio = new Audio(rec.url);
+      audio.play();
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+      currentlyPlaying = { id, audio, btn };
+      audio.onended = () => {
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>';
+        currentlyPlaying = null;
+      };
+    } else if (btn.dataset.action === 'download') {
+      const a = document.createElement('a');
+      a.href = rec.url;
+      a.download = rec.name + '.webm';
+      a.click();
+    } else if (btn.dataset.action === 'loadTranscript') {
+      if (confirm('현재 회의록을 이 녹음의 회의록으로 교체하시겠습니까?')) {
+        transcriptEl.innerText = rec.transcript;
+        segments = [];
+        interimText = '';
+        showToast('회의록을 불러왔습니다');
+      }
+    } else if (btn.dataset.action === 'delete') {
+      if (currentlyPlaying && currentlyPlaying.id === id) {
+        currentlyPlaying.audio.pause();
+        currentlyPlaying = null;
+      }
+      URL.revokeObjectURL(rec.url);
+      recordings = recordings.filter(r => r.id !== id);
+      renderList();
+    }
+  });
+
+  // ===== 회의록 액션 =====
+  function getTranscriptText() {
+    // contenteditable이 편집됐을 수도 있으므로 innerText 우선
+    return transcriptEl.innerText.trim();
+  }
+
+  copyBtn.addEventListener('click', async () => {
+    const text = getTranscriptText();
+    if (!text) {
+      showToast('복사할 내용이 없습니다');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('회의록이 클립보드에 복사되었습니다');
+    } catch (e) {
+      showToast('복사 실패');
+    }
+  });
+
+  downloadTxtBtn.addEventListener('click', () => {
+    const text = getTranscriptText();
+    if (!text) {
+      showToast('다운로드할 내용이 없습니다');
+      return;
+    }
+    const now = new Date();
+    const filename = `회의록_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}.txt`;
+    const header = `회의록\n작성일: ${now.toLocaleString('ko-KR')}\n${'='.repeat(40)}\n\n`;
+    const blob = new Blob([header + text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('회의록이 다운로드되었습니다');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    const text = getTranscriptText();
+    if (!text) return;
+    if (confirm('회의록을 모두 지우시겠습니까?')) {
+      segments = [];
+      interimText = '';
+      transcriptEl.innerHTML = '';
+      showToast('회의록이 초기화되었습니다');
+    }
+  });
+
+  // ===== 컨트롤 =====
+  recordBtn.addEventListener('click', () => {
+    if (!isRecording) {
+      startRecording();
+    } else {
+      stopRecording();
+    }
+  });
+  pauseBtn.addEventListener('click', togglePause);
+  cancelBtn.addEventListener('click', cancelRecording);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea, [contenteditable]')) return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      recordBtn.click();
+    }
+  });
+</script>
+</body>
+</html>
